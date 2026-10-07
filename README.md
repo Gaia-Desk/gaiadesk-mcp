@@ -113,7 +113,7 @@ gaiadesk-cli token create --desk 123456789 --name claude \
 | `shell` | an interactive `gaiadesk-cli shell` (no MCP tool) |
 | `cp` | `gaiadesk_copy_files` |
 | `forward` | `gaiadesk_forward_start` |
-| `jobs` | `gaiadesk_job_run`, `job_list`, `job_logs`, `job_kill` |
+| `jobs` | `gaiadesk_job_run`, `job_list`, `job_logs`, `job_wait`, `job_kill` |
 | `screen` | the screen tools (`gaiadesk_open_session`, `screenshot`, `click`, …) |
 
 You can also issue tokens in the GaiaDesk app: **Agents → Agent tokens**
@@ -292,11 +292,12 @@ argument is an error, not silently ignored.
 
 | Tool | Arguments | Needs scope | Returns |
 |---|---|---|---|
-| `gaiadesk_exec` | `desk_id` (required); `command` (one command line for the shell) **or** `argv` (exact argument vector); `shell`: `default` \| `none` \| `sh` \| `cmd` \| `pwsh`; `timeout_seconds` (default 1800, `0` = no limit); `stdin` (text, then end of input) | `exec` | Text: `exit N`, then `--- stdout ---` / `--- stderr ---`. `structuredContent`: the same object as `gaiadesk-cli exec --json` (`exit`, `remote_code`, `stdout`, `stderr`, `duration_ms`, `desk`, `route`, `mode`, `shell`, `timed_out`, `error`, `notes`, `truncated`). `isError` when the exit is not 0. |
+| `gaiadesk_exec` | `desk_id` (required); `command` (one command line for the shell) **or** `argv` (exact argument vector); `shell`: `default` \| `none` \| `sh` \| `bash` \| `zsh` \| `cmd` \| `pwsh` (or `powershell`); `cwd` (where it starts on the desk); `env` (object of strings, `NAME: value`, never logged); `timeout_seconds` (default 1800, `0` = no limit); `stdin` (text, then end of input) | `exec` | Text: `exit N`, then `--- stdout ---` / `--- stderr ---`. `structuredContent`: the same object as `gaiadesk-cli exec --json` (`exit`, `remote_code`, `stdout`, `stderr`, `duration_ms`, `desk`, `route`, `mode`, `shell`, `timed_out`, `error`, `notes`, `truncated`). `isError` when the exit is not 0. A program Windows Smart App Control / WDAC refused to start has `error.reason` `blocked_by_os_policy`. |
 | `gaiadesk_copy_files` | `desk_id`, `direction` (`upload` \| `download`), `local` (path on this machine), `remote` (path on the desk; relative = under the desk user's home; trailing `/` = into that folder), `recursive` (default false) | `cp` | JSON text: `direction`, `desk`, `destination`, `files`, `dirs`, `bytes`, `resumed_bytes`, `failed[]`, `seconds`. Resumable. |
-| `gaiadesk_job_run` | `desk_id`, `name` (letters, digits, `. _ -`), `command` (shell command line); optional `priority` (`low` \| `normal` \| `high`), `cpu_percent` (1-100 of the whole machine), `mem_mb`, `keep_awake` | `jobs` | JSON text `{"job": {...}}` |
+| `gaiadesk_job_run` | `desk_id`, `name` (letters, digits, `. _ -`), `command` (shell command line); optional `cwd`, `shell` (`default` \| `sh` \| `bash` \| `zsh` \| `cmd` \| `pwsh`; default `sh -c` / `cmd /c`), `env` (object of strings, never logged), `priority` (`low` \| `normal` \| `high`), `cpu_percent` (1-100 of the whole machine), `mem_mb`, `keep_awake` | `jobs` | JSON text `{"job": {...}}` |
 | `gaiadesk_job_list` | `desk_id` | `jobs` | JSON text `{"jobs": [...]}` (name, state `running`/`exited`/`killed`/`lost`, exit code, command, …) |
 | `gaiadesk_job_logs` | `desk_id`, `name`, `tail_bytes` (1-65536, default 65536) | `jobs` | JSON text `{"job": {...}, "output": "..."}` (stdout and stderr together) |
+| `gaiadesk_job_wait` | `desk_id`, `name`; optional `timeout_seconds` (absent or `0` = wait until it ends) | `jobs` | JSON text `{"job": {...}, "timed_out": false}`: the job as it ended (`state`, `exit_code`; `reason` `blocked_by_os_policy` when Windows Smart App Control / WDAC refused a program in it), or, `timed_out: true`, as it stands, still running |
 | `gaiadesk_job_kill` | `desk_id`, `name` | `jobs` | JSON text `{"job": {...}}`; stops the job and everything it started |
 | `gaiadesk_forward_start` | `desk_id`, `remote_port` (1-65535); optional `remote_host` (default the desk itself, `127.0.0.1`), `local_port` (0 or absent = pick a free one) | `forward` | JSON text `{"forward_id", "local_port", "note"}`; listens on localhost of the machine running the server |
 | `gaiadesk_forward_stop` | `forward_id` | - | JSON text `{"stopped", "local_port"}` |
@@ -306,7 +307,8 @@ prompt, no echo, stdin closed unless you pass `stdin`. The default shell is
 the desk's own (the user's login shell on macOS/Linux, `cmd.exe` on Windows);
 use `shell: "sh"` for portable POSIX scripts and `shell: "pwsh"` for
 PowerShell. Long work belongs in `gaiadesk_job_run`, not in a backgrounded
-`exec` (exec ends its whole process tree when it returns).
+`exec` (exec ends its whole process tree when it returns); start it, then
+`gaiadesk_job_wait` for it to end instead of polling `gaiadesk_job_list`.
 
 The desk tools keep the connection to each desk open between calls (per desk
 and credential), so the tenth call costs no handshake.

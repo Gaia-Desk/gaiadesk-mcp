@@ -2,6 +2,11 @@
 
 ## Unreleased
 
+- README: `gaiadesk_job_wait` (`desk_id`, `name`, `timeout_seconds`; returns
+  `{job, timed_out}`); `env` (object of strings) on `gaiadesk_exec` and
+  `gaiadesk_job_run`, `shell` (and `cwd`) on `gaiadesk_job_run`; `bash` and
+  `zsh` shells; `blocked_by_os_policy` (Windows Smart App Control / WDAC) in
+  exec errors and jobs.
 - `@gaiadesk/cli` (the prebuilt `gaiadesk-cli` for macOS, Linux and Windows)
   is an optional dependency, and the launcher tries its binary right after
   `$GAIADESK_CLI`, before `PATH`: `npx -y @gaiadesk/mcp` works with nothing
