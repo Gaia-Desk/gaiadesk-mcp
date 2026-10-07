@@ -2,9 +2,45 @@
 // {id, result: {argv, saw: <the request>}}; a notification gets nothing.
 // Exits with $FAKE_EXIT (default 0) when stdin ends.
 //
+// `--version --json` is answered as $FAKE_VERSION says:
+//   json    a 0.10.324+ CLI: the version object, with `mcp_lifecycle`
+//   v2only  a version object whose MCP server speaks only 2026-07-28
+//   error   exits 2 with an unknown-flag error on stderr
+//   (unset) an older CLI: `gaiadesk-cli 0.10.300` as text
+// Every `--version` run is appended to $FAKE_LOG (when set), so tests can
+// see whether the launcher probed.
+//
 // Compiled to dist-test/fixtures/fake-gaiadesk-cli.js. The launcher runs
 // $GAIADESK_CLI directly, so launcher.test.ts wraps it in a small executable
 // shell script that execs `node` on the compiled file.
+import { appendFileSync } from 'node:fs';
+
+const argv = process.argv.slice(2);
+
+if (argv[0] === '--version') {
+  if (process.env.FAKE_LOG) appendFileSync(process.env.FAKE_LOG, JSON.stringify(argv) + '\n');
+  const style = process.env.FAKE_VERSION ?? '';
+  if (style === 'error') {
+    process.stderr.write("gaiadesk-cli: unknown flag '--json'\n");
+    process.exit(2);
+  }
+  if (style === 'json' || style === 'v2only') {
+    const full = style === 'json';
+    process.stdout.write(
+      JSON.stringify({
+        name: 'gaiadesk-cli',
+        version: '0.10.324',
+        features: full ? ['json_error_envelope', 'exec_json_stream', 'mcp_lifecycle', 'mcp_underscore_tool_names'] : ['json_error_envelope'],
+        json_shapes: ['v1', 'v2'],
+        mcp_protocol_versions: full ? ['2026-07-28', '2025-11-25', '2025-06-18', '2025-03-26', '2024-11-05'] : ['2026-07-28'],
+      }) + '\n',
+    );
+  } else {
+    process.stdout.write('gaiadesk-cli 0.10.300\n');
+  }
+  process.exit(0);
+}
+
 let buf = '';
 process.stdin.setEncoding('utf8');
 process.stdin.on('data', (c: string) => {

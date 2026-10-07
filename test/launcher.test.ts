@@ -4,7 +4,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { spawn } from 'node:child_process';
-import { chmodSync, mkdtempSync, writeFileSync } from 'node:fs';
+import { chmodSync, existsSync, mkdtempSync, readFileSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -49,7 +49,7 @@ test('--which prints the CLI it would run', { skip: !posix }, async () => {
   assert.equal(r.out.trim(), FAKE);
 });
 
-test('runs `gaiadesk-cli mcp <args>` and bridges a legacy client', { skip: !posix }, async () => {
+test('runs `gaiadesk-cli mcp <args>` and bridges a legacy client to an older CLI', { skip: !posix }, async () => {
   const input =
     [
       { jsonrpc: '2.0', id: 1, method: 'initialize', params: { protocolVersion: '2025-06-18', capabilities: {} } },
@@ -78,6 +78,39 @@ test('GAIADESK_MCP_BRIDGE=off is pure stdio passthrough', { skip: !posix }, asyn
   const msg = { jsonrpc: '2.0', id: 5, method: 'initialize', params: {} };
   const r = await run([], JSON.stringify(msg) + '\n', { GAIADESK_MCP_BRIDGE: 'off' });
   assert.deepEqual(lines(r.out)[0].result.saw, msg, 'initialize reached the CLI unchanged');
+});
+
+const legacyInit = { jsonrpc: '2.0', id: 1, method: 'initialize', params: { protocolVersion: '2025-06-18', capabilities: {} } };
+
+test('a CLI that speaks the standard lifecycle (0.10.324+): initialize reaches it untouched', { skip: !posix }, async () => {
+  const log = join(mkdtempSync(join(tmpdir(), 'gaiadesk-mcp-')), 'probe.log');
+  const input = [legacyInit, { jsonrpc: '2.0', method: 'notifications/initialized' }, { jsonrpc: '2.0', id: 2, method: 'tools/list' }]
+    .map((m) => JSON.stringify(m))
+    .join('\n') + '\n';
+  const r = await run(['--audit-dir', '/tmp/x'], input, { FAKE_VERSION: 'json', FAKE_LOG: log });
+  assert.equal(r.code, 0, r.err);
+  const [init, list] = lines(r.out);
+  assert.deepEqual(init.result.saw, legacyInit, 'no bridge: the CLI answered initialize itself');
+  assert.deepEqual(list.result.saw, { jsonrpc: '2.0', id: 2, method: 'tools/list' }, 'no _meta added');
+  assert.deepEqual(list.result.argv, ['mcp', '--audit-dir', '/tmp/x']);
+  assert.deepEqual(lines(readFileSync(log, 'utf8')), [['--version', '--json']], 'probed once, with --version --json');
+});
+
+test('an older CLI is bridged: text from --version, an unknown-flag error, or a stateless-only server', { skip: !posix }, async () => {
+  for (const FAKE_VERSION of ['', 'error', 'v2only']) {
+    const r = await run([], JSON.stringify(legacyInit) + '\n', { FAKE_VERSION });
+    assert.equal(r.code, 0, `${FAKE_VERSION}: ${r.err}`);
+    const [init] = lines(r.out);
+    assert.equal(init.result.serverInfo?.name, 'gaiadesk', `${FAKE_VERSION || 'text'}: the bridge answered initialize`);
+    assert.equal(init.result.saw, undefined);
+  }
+});
+
+test('GAIADESK_MCP_BRIDGE=on bridges even a new CLI, without probing', { skip: !posix }, async () => {
+  const log = join(mkdtempSync(join(tmpdir(), 'gaiadesk-mcp-')), 'probe.log');
+  const r = await run([], JSON.stringify(legacyInit) + '\n', { FAKE_VERSION: 'json', FAKE_LOG: log, GAIADESK_MCP_BRIDGE: 'on' });
+  assert.equal(lines(r.out)[0].result.serverInfo?.name, 'gaiadesk');
+  assert.equal(existsSync(log), false, 'no --version probe');
 });
 
 test("the CLI's exit code is the launcher's", { skip: !posix }, async () => {

@@ -7,7 +7,10 @@
 //
 // Environment:
 //   GAIADESK_CLI          full path to gaiadesk-cli (skips the search)
-//   GAIADESK_MCP_BRIDGE   "off": pure passthrough, no legacy-handshake bridge
+//   GAIADESK_MCP_BRIDGE   "off": pure passthrough; "on": always the legacy-handshake
+//                         bridge; unset: passthrough for a gaiadesk-cli that speaks
+//                         the standard MCP lifecycle (`--version --json` says so,
+//                         0.10.324+), the bridge for an older one
 
 import { spawn } from 'node:child_process';
 import type { ChildProcess } from 'node:child_process';
@@ -16,6 +19,7 @@ import { fileURLToPath } from 'node:url';
 
 import { locate, CliNotFoundError } from './locate.js';
 import { createBridge, splitLines } from './bridge.js';
+import { launchMode, probeCli } from './detect.js';
 
 // Compiled to dist/bin.js; package.json is one level up, both in this
 // repository and in the installed package.
@@ -39,7 +43,7 @@ if (args[0] === '--which') {
 }
 
 const childArgs = ['mcp', ...args];
-const bridgeOff = (process.env.GAIADESK_MCP_BRIDGE || '').toLowerCase() === 'off';
+const mode = launchMode(process.env.GAIADESK_MCP_BRIDGE, () => probeCli(cli));
 
 const SIGNALS: Record<string, number> = { SIGHUP: 1, SIGINT: 2, SIGKILL: 9, SIGTERM: 15 };
 
@@ -69,7 +73,7 @@ function onExit(child: ChildProcess): void {
   });
 }
 
-if (bridgeOff) {
+if (mode === 'passthrough') {
   const child = spawn(cli, childArgs, { stdio: 'inherit' });
   forwardSignals(child);
   onExit(child);

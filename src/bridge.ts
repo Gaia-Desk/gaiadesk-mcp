@@ -1,7 +1,11 @@
-// The legacy-handshake bridge.
+// The legacy-handshake bridge, for a gaiadesk-cli from before 0.10.324.
 //
-// `gaiadesk-cli mcp` speaks the stateless MCP revision 2026-07-28: there is
-// no `initialize`, and every request must carry
+// gaiadesk-cli 0.10.324 and newer answer the standard `initialize` handshake
+// themselves (`--version --json` lists `mcp_lifecycle`); the launcher passes
+// their stdio through untouched and never uses this bridge (detect.ts).
+//
+// An older `gaiadesk-cli mcp` speaks only the stateless MCP revision
+// 2026-07-28: there is no `initialize`, and every request must carry
 //   params._meta["io.modelcontextprotocol/protocolVersion"] = "2026-07-28"
 //   params._meta["io.modelcontextprotocol/clientCapabilities"] = {...}
 // (observed: a request without them is answered with JSON-RPC -32602).
@@ -51,6 +55,7 @@ function isObj(v: unknown): v is Json {
   return typeof v === 'object' && v !== null && !Array.isArray(v);
 }
 
+// The tool names of the CLIs this bridge serves (before 0.10.324) are dotted.
 const INSTRUCTIONS =
   'GaiaDesk desks: gaiadesk.exec runs one command and returns its exit code, stdout and stderr; ' +
   'copy_files, job_* and forward_* operate on a desk; the screen tools need gaiadesk.open_session first. ' +

@@ -11,7 +11,8 @@ ships with the GaiaDesk app. This repository holds:
 - this guide: every tool, sign-in and scoped tokens, client configs, safety;
 - `@gaiadesk/mcp`, a small npm launcher (`gaiadesk-mcp`, written in
   TypeScript, no runtime dependencies) that finds `gaiadesk-cli` on your
-  machine and runs `gaiadesk-cli mcp` on stdio, so a client config can say
+  machine and runs `gaiadesk-cli mcp` on stdio (bridging an older CLI to
+  clients that open with `initialize`), so a client config can say
   `npx -y @gaiadesk/mcp` instead of a per-OS path;
 - [MCP or SDK?](docs/mcp-vs-sdk.md): when to give a model this server and
   when to drive desks from your own code with an SDK.
@@ -101,12 +102,12 @@ gaiadesk-cli token create --desk 123456789 --name claude \
 
 | Scope | Allows (CLI, and the MCP tools) |
 |---|---|
-| `exec` | one command: `gaiadesk.exec` |
+| `exec` | one command: `gaiadesk_exec` |
 | `shell` | an interactive `gaiadesk-cli shell` (no MCP tool) |
-| `cp` | `gaiadesk.copy_files` |
-| `forward` | `gaiadesk.forward_start` |
-| `jobs` | `gaiadesk.job_run`, `job_list`, `job_logs`, `job_kill` |
-| `screen` | the screen tools (`gaiadesk.open_session`, `screenshot`, `click`, …) |
+| `cp` | `gaiadesk_copy_files` |
+| `forward` | `gaiadesk_forward_start` |
+| `jobs` | `gaiadesk_job_run`, `job_list`, `job_logs`, `job_kill` |
+| `screen` | the screen tools (`gaiadesk_open_session`, `screenshot`, `click`, …) |
 
 You can also issue tokens in the GaiaDesk app: **Agents → Agent tokens**
 (screen tokens: **Agents → Connect an AI assistant**).
@@ -251,7 +252,7 @@ logs on stderr. On Windows, `npx` is `npx.cmd`; some clients need
 `gaiadesk-cli mcp --http` serves on `http://127.0.0.1:7333/mcp` and needs
 `GAIADESK_AGENT_TOKEN`; clients must send `Authorization: Bearer <token>` on
 every request. Over HTTP the desk tools use only that agent token, and
-`gaiadesk.exec` is not offered.
+`gaiadesk_exec` is not offered.
 
 ```sh
 GAIADESK_AGENT_TOKEN=gdagt_… gaiadesk-cli mcp --http --audit-dir ~/gaiadesk-agent-sessions
@@ -272,33 +273,35 @@ GAIADESK_AGENT_TOKEN=gdagt_… gaiadesk-cli mcp --http --audit-dir ~/gaiadesk-ag
 
 The launcher passes every flag through unchanged. Its own options:
 `gaiadesk-mcp --which` prints the `gaiadesk-cli` it would run;
-`GAIADESK_CLI=<path>` picks the binary; `GAIADESK_MCP_BRIDGE=off` disables
-the bridge described [below](#protocol-version-and-the-launchers-bridge).
+`GAIADESK_CLI=<path>` picks the binary; `GAIADESK_MCP_BRIDGE=off` / `on`
+turns the bridge for older CLIs described
+[below](#protocol-version-and-the-launchers-bridge) off or always on.
 
 ## The tools
 
 Names, arguments and limits are those `gaiadesk-cli mcp` advertises in
-`tools/list`. Every schema has `additionalProperties: false`: an invented
+`tools/list` (0.10.324 and newer; an older CLI spells every name with a dot,
+`gaiadesk.exec`: see [Tool names on older CLIs](#tool-names-on-older-clis)). Every schema has `additionalProperties: false`: an invented
 argument is an error, not silently ignored.
 
 ### Desk tools (no screen involved)
 
 | Tool | Arguments | Needs scope | Returns |
 |---|---|---|---|
-| `gaiadesk.exec` | `desk_id` (required); `command` (one command line for the shell) **or** `argv` (exact argument vector); `shell`: `default` \| `none` \| `sh` \| `cmd` \| `pwsh`; `timeout_seconds` (default 1800, `0` = no limit); `stdin` (text, then end of input) | `exec` | Text: `exit N`, then `--- stdout ---` / `--- stderr ---`. `structuredContent`: the same object as `gaiadesk-cli exec --json` (`exit`, `remote_code`, `stdout`, `stderr`, `duration_ms`, `desk`, `route`, `mode`, `shell`, `timed_out`, `error`, `notes`, `truncated`). `isError` when the exit is not 0. |
-| `gaiadesk.copy_files` | `desk_id`, `direction` (`upload` \| `download`), `local` (path on this machine), `remote` (path on the desk; relative = under the desk user's home; trailing `/` = into that folder), `recursive` (default false) | `cp` | JSON text: `direction`, `desk`, `destination`, `files`, `dirs`, `bytes`, `resumed_bytes`, `failed[]`, `seconds`. Resumable. |
-| `gaiadesk.job_run` | `desk_id`, `name` (letters, digits, `. _ -`), `command` (shell command line); optional `priority` (`low` \| `normal` \| `high`), `cpu_percent` (1-100 of the whole machine), `mem_mb`, `keep_awake` | `jobs` | JSON text `{"job": {...}}` |
-| `gaiadesk.job_list` | `desk_id` | `jobs` | JSON text `{"jobs": [...]}` (name, state `running`/`exited`/`killed`/`lost`, exit code, command, …) |
-| `gaiadesk.job_logs` | `desk_id`, `name`, `tail_bytes` (1-65536, default 65536) | `jobs` | JSON text `{"job": {...}, "output": "..."}` (stdout and stderr together) |
-| `gaiadesk.job_kill` | `desk_id`, `name` | `jobs` | JSON text `{"job": {...}}`; stops the job and everything it started |
-| `gaiadesk.forward_start` | `desk_id`, `remote_port` (1-65535); optional `remote_host` (default the desk itself, `127.0.0.1`), `local_port` (0 or absent = pick a free one) | `forward` | JSON text `{"forward_id", "local_port", "note"}`; listens on localhost of the machine running the server |
-| `gaiadesk.forward_stop` | `forward_id` | - | JSON text `{"stopped", "local_port"}` |
+| `gaiadesk_exec` | `desk_id` (required); `command` (one command line for the shell) **or** `argv` (exact argument vector); `shell`: `default` \| `none` \| `sh` \| `cmd` \| `pwsh`; `timeout_seconds` (default 1800, `0` = no limit); `stdin` (text, then end of input) | `exec` | Text: `exit N`, then `--- stdout ---` / `--- stderr ---`. `structuredContent`: the same object as `gaiadesk-cli exec --json` (`exit`, `remote_code`, `stdout`, `stderr`, `duration_ms`, `desk`, `route`, `mode`, `shell`, `timed_out`, `error`, `notes`, `truncated`). `isError` when the exit is not 0. |
+| `gaiadesk_copy_files` | `desk_id`, `direction` (`upload` \| `download`), `local` (path on this machine), `remote` (path on the desk; relative = under the desk user's home; trailing `/` = into that folder), `recursive` (default false) | `cp` | JSON text: `direction`, `desk`, `destination`, `files`, `dirs`, `bytes`, `resumed_bytes`, `failed[]`, `seconds`. Resumable. |
+| `gaiadesk_job_run` | `desk_id`, `name` (letters, digits, `. _ -`), `command` (shell command line); optional `priority` (`low` \| `normal` \| `high`), `cpu_percent` (1-100 of the whole machine), `mem_mb`, `keep_awake` | `jobs` | JSON text `{"job": {...}}` |
+| `gaiadesk_job_list` | `desk_id` | `jobs` | JSON text `{"jobs": [...]}` (name, state `running`/`exited`/`killed`/`lost`, exit code, command, …) |
+| `gaiadesk_job_logs` | `desk_id`, `name`, `tail_bytes` (1-65536, default 65536) | `jobs` | JSON text `{"job": {...}, "output": "..."}` (stdout and stderr together) |
+| `gaiadesk_job_kill` | `desk_id`, `name` | `jobs` | JSON text `{"job": {...}}`; stops the job and everything it started |
+| `gaiadesk_forward_start` | `desk_id`, `remote_port` (1-65535); optional `remote_host` (default the desk itself, `127.0.0.1`), `local_port` (0 or absent = pick a free one) | `forward` | JSON text `{"forward_id", "local_port", "note"}`; listens on localhost of the machine running the server |
+| `gaiadesk_forward_stop` | `forward_id` | - | JSON text `{"stopped", "local_port"}` |
 
-`gaiadesk.exec` runs **one** command, like `ssh host cmd`: no terminal, no
+`gaiadesk_exec` runs **one** command, like `ssh host cmd`: no terminal, no
 prompt, no echo, stdin closed unless you pass `stdin`. The default shell is
 the desk's own (the user's login shell on macOS/Linux, `cmd.exe` on Windows);
 use `shell: "sh"` for portable POSIX scripts and `shell: "pwsh"` for
-PowerShell. Long work belongs in `gaiadesk.job_run`, not in a backgrounded
+PowerShell. Long work belongs in `gaiadesk_job_run`, not in a backgrounded
 `exec` (exec ends its whole process tree when it returns).
 
 The desk tools keep the connection to each desk open between calls (per desk
@@ -311,19 +314,19 @@ Need `GAIADESK_AGENT_TOKEN` holding a token with the `screen` scope, and
 
 | Tool | Arguments |
 |---|---|
-| `gaiadesk.open_session` | `desk_id`. Returns `structuredContent: {session_id, desk_id}`. Every other screen tool takes `session_id`. A session closes after 15 minutes without a call; at most 8 per server. |
-| `gaiadesk.close_session` | `session_id`. Releases anything held down. |
-| `gaiadesk.screenshot` | `session_id`; optional `region` `[left, top, right, bottom]` (a magnified crop for reading detail; never changes the coordinate space). Returns an image. |
-| `gaiadesk.click` | `session_id`, `x`, `y`; optional `button` (`left` \| `right` \| `middle`), `count` (1, 2, 3; 2 and 3 left button only), `hold_keys` (e.g. `"ctrl+shift"`) |
-| `gaiadesk.move_pointer` | `session_id`, `x`, `y` |
-| `gaiadesk.drag` | `session_id`, `from_x`, `from_y`, `to_x`, `to_y`; optional `hold_keys` |
-| `gaiadesk.press_button` | `session_id`, `state` (`down` \| `up`): hold or release the left button across calls |
-| `gaiadesk.scroll` | `session_id`, `x`, `y`, `direction` (`up` \| `down` \| `left` \| `right`), `clicks` (>= 1); optional `hold_keys` |
-| `gaiadesk.type_text` | `session_id`, `text`; optional `secret` (a credential: still typed in full, withheld from watchers and logs; too short to redact safely is refused) |
-| `gaiadesk.press_keys` | `session_id`, `keys` (e.g. `"Return"`, `"ctrl+c"`, `"cmd+shift+4"`); optional `repeat` |
-| `gaiadesk.hold_keys` | `session_id`, `keys`, `seconds` |
-| `gaiadesk.wait` | `session_id`, `seconds` |
-| `gaiadesk.pointer_position` | `session_id` |
+| `gaiadesk_open_session` | `desk_id`. Returns `structuredContent: {session_id, desk_id}`. Every other screen tool takes `session_id`. A session closes after 15 minutes without a call; at most 8 per server. |
+| `gaiadesk_close_session` | `session_id`. Releases anything held down. |
+| `gaiadesk_screenshot` | `session_id`; optional `region` `[left, top, right, bottom]` (a magnified crop for reading detail; never changes the coordinate space). Returns an image. |
+| `gaiadesk_click` | `session_id`, `x`, `y`; optional `button` (`left` \| `right` \| `middle`), `count` (1, 2, 3; 2 and 3 left button only), `hold_keys` (e.g. `"ctrl+shift"`) |
+| `gaiadesk_move_pointer` | `session_id`, `x`, `y` |
+| `gaiadesk_drag` | `session_id`, `from_x`, `from_y`, `to_x`, `to_y`; optional `hold_keys` |
+| `gaiadesk_press_button` | `session_id`, `state` (`down` \| `up`): hold or release the left button across calls |
+| `gaiadesk_scroll` | `session_id`, `x`, `y`, `direction` (`up` \| `down` \| `left` \| `right`), `clicks` (>= 1); optional `hold_keys` |
+| `gaiadesk_type_text` | `session_id`, `text`; optional `secret` (a credential: still typed in full, withheld from watchers and logs; too short to redact safely is refused) |
+| `gaiadesk_press_keys` | `session_id`, `keys` (e.g. `"Return"`, `"ctrl+c"`, `"cmd+shift+4"`); optional `repeat` |
+| `gaiadesk_hold_keys` | `session_id`, `keys`, `seconds` |
+| `gaiadesk_wait` | `session_id`, `seconds` |
+| `gaiadesk_pointer_position` | `session_id` |
 
 `x`/`y` are pixels in the most recent full screenshot, origin top-left. Key
 names are xdotool-style; an unknown name is refused, never guessed.
@@ -363,23 +366,49 @@ Details: <https://gaiadesk.net/docs/cli-for-agents> and
 
 ## Protocol version and the launcher's bridge
 
-`gaiadesk-cli mcp` implements MCP revision **2026-07-28**, which is
-stateless: there is no `initialize` handshake, and every request must carry
-`params._meta["io.modelcontextprotocol/protocolVersion"]` and
-`params._meta["io.modelcontextprotocol/clientCapabilities"]`. A client that
-still opens with `initialize` gets JSON-RPC error `-32602` from
-`gaiadesk-cli mcp` directly.
+`gaiadesk-cli mcp` **0.10.324 and newer** speaks both:
 
-The launcher bridges that gap. If the **first** message from the client is
-`initialize`, it answers `initialize` and `ping` itself, drops client
-notifications, and adds the two `_meta` fields to every other request.
-Otherwise it passes every byte through untouched. Server output is never
-modified. `GAIADESK_MCP_BRIDGE=off` turns the bridge off (pure stdio
-passthrough).
+- the standard MCP lifecycle (`initialize`, then `notifications/initialized`,
+  then plain requests) at revisions 2025-11-25, 2025-06-18, 2025-03-26 and
+  2024-11-05, which is what most clients send today; and
+- the stateless revision **2026-07-28** (no `initialize`; every request carries
+  `params._meta["io.modelcontextprotocol/protocolVersion"]` and
+  `params._meta["io.modelcontextprotocol/clientCapabilities"]`).
 
-Tool names contain a dot (`gaiadesk.exec`). Clients whose model provider
-restricts function names to `[A-Za-z0-9_-]` may need to rename or reject
-them; that is up to the client.
+`gaiadesk-cli --version --json` lists the revisions it speaks
+(`mcp_protocol_versions`) and the `mcp_lifecycle` feature.
+
+**Older `gaiadesk-cli` (before 0.10.324)** speak only 2026-07-28: a client
+that opens with `initialize` gets JSON-RPC error `-32602` from them directly.
+
+The launcher handles both. Before it starts the server it runs
+`gaiadesk-cli --version --json`:
+
+- **A CLI that speaks the standard lifecycle** (the output is a version
+  object listing `mcp_lifecycle`, or a protocol revision besides 2026-07-28):
+  stdio is passed straight through, every byte, both ways. No bridge.
+- **An older CLI** (it prints its version as text, or fails on `--json`): the
+  launcher bridges. If the **first** message from the client is
+  `initialize`, it answers `initialize` and `ping` itself, drops client
+  notifications, and adds the two `_meta` fields to every other request.
+  Otherwise it passes every byte through untouched. Server output is never
+  modified.
+
+`GAIADESK_MCP_BRIDGE=off` skips the check and never bridges (pure stdio
+passthrough); `GAIADESK_MCP_BRIDGE=on` skips the check and always bridges.
+
+### Tool names on older CLIs
+
+The tool names above (`gaiadesk_exec`, `gaiadesk_screenshot`, …) are those of
+`gaiadesk-cli` 0.10.324 and newer; they match `[A-Za-z0-9_-]`, which every
+model provider accepts. Those CLIs still accept the old dotted spelling
+(`gaiadesk.exec`) in `tools/call`. An **older** CLI advertises and accepts only
+the dotted names (`gaiadesk.exec`, `gaiadesk.copy_files`,
+`gaiadesk.job_run`, …, `gaiadesk.open_session`, `gaiadesk.screenshot`, …).
+The bridge does not rename tools, so with an older CLI your client sees the
+dotted names, and a client whose model provider restricts function names to
+`[A-Za-z0-9_-]` may reject them: update GaiaDesk on the machine running the
+server.
 
 ## Troubleshooting
 
@@ -388,15 +417,17 @@ them; that is up to the client.
 | `gaiadesk-cli was not found` (exit 127) | Install GaiaDesk (<https://gaiadesk.net/download>) or set `GAIADESK_CLI`. |
 | No tools listed; stderr says `no agent token in $GAIADESK_AGENT_TOKEN` | No credential in the server's environment. Set `GAIADESK_TOKEN_FILE` (desk tools) or `GAIADESK_AGENT_TOKEN` (screen tools). The stderr line appears whenever `GAIADESK_AGENT_TOKEN` is unset, even if desk tools work. |
 | A tool returns "…the `cp` scope…" | The token lacks that scope. Mint one with it. |
-| `-32602 … _meta … is required` | A legacy client talking to `gaiadesk-cli mcp` directly. Use the launcher. |
+| `-32602 … _meta … is required` | A client that opens with `initialize`, talking directly to a `gaiadesk-cli mcp` from before 0.10.324. Update GaiaDesk, or use the launcher. |
+| A call to `gaiadesk_exec` (or any `gaiadesk_*` tool) is refused as an unknown tool | An older `gaiadesk-cli` (before 0.10.324) whose tools are dotted (`gaiadesk.exec`). Update GaiaDesk. |
 | Screen session closes at once | `--audit-dir` is missing or not writable. |
 | Token file refused | Other users can read it: `chmod 600`. |
 
 ## Development
 
 The launcher is TypeScript in [`src/`](src) (`locate.ts`: finding
-`gaiadesk-cli`; `bridge.ts`: the legacy-handshake bridge, pure; `bin.ts`:
-the stream wiring), compiled to `dist/`, which is what npm publishes.
+`gaiadesk-cli`; `detect.ts`: reading `gaiadesk-cli --version --json` to
+decide between passthrough and the bridge; `bridge.ts`: the legacy-handshake
+bridge for older CLIs, pure; `bin.ts`: the stream wiring), compiled to `dist/`, which is what npm publishes.
 
 ```sh
 npm ci
@@ -404,7 +435,9 @@ npm test       # build src/ to dist/, build test/ to dist-test/, run node:test a
 ```
 
 The end-to-end tests run the built `dist/bin.js` against a fake
-`gaiadesk-cli` ([`test/fixtures/fake-gaiadesk-cli.ts`](test/fixtures/fake-gaiadesk-cli.ts));
+`gaiadesk-cli` ([`test/fixtures/fake-gaiadesk-cli.ts`](test/fixtures/fake-gaiadesk-cli.ts)),
+as a new CLI (`--version --json` answered) and as an older one (text, or an
+error);
 they need a POSIX shell and are skipped on Windows, where the locator and
 bridge tests still run. CI runs on Linux, macOS and Windows with Node 18,
 20 and 22. The only dev dependencies are `typescript` and `@types/node`.

@@ -1,5 +1,18 @@
 # Changelog
 
+## Unreleased
+
+- The launcher runs `gaiadesk-cli --version --json` first. A CLI that speaks
+  the standard MCP lifecycle itself (0.10.324 and newer: the `mcp_lifecycle`
+  feature, or a protocol revision besides 2026-07-28 in
+  `mcp_protocol_versions`) gets its stdio passed straight through, with no
+  bridge. An older CLI (its version as text, or an error) is bridged as
+  before. `GAIADESK_MCP_BRIDGE=on` forces the bridge; `off` still forces
+  passthrough. The check is exported as `@gaiadesk/mcp/detect`.
+- README and docs: tool names are `gaiadesk_*` (`gaiadesk_exec`,
+  `gaiadesk_screenshot`, …), as `gaiadesk-cli` 0.10.324 advertises them; the
+  dotted names of older CLIs are noted.
+
 ## 0.1.0 (unreleased)
 
 - First version of `@gaiadesk/mcp`: the `gaiadesk-mcp` launcher.
