@@ -24,8 +24,11 @@ import path from 'node:path';
 export const DOWNLOAD_URL = 'https://gaiadesk.net/download';
 export const CLI_ENV = 'GAIADESK_CLI';
 
+/** An environment: `process.env`, or a plain object in tests. */
+export type Env = Record<string, string | undefined>;
+
 /** The bare executable names to look for on PATH. */
-export function binaryNames(platform, env = {}) {
+export function binaryNames(platform: string, env: Env = {}): string[] {
   if (platform !== 'win32') return ['gaiadesk-cli'];
   const exts = (env.PATHEXT || '.EXE;.CMD;.BAT;.COM')
     .split(';')
@@ -36,12 +39,12 @@ export function binaryNames(platform, env = {}) {
   return ordered.map((e) => `gaiadesk-cli${e}`);
 }
 
-function pathFor(platform) {
+function pathFor(platform: string): path.PlatformPath {
   return platform === 'win32' ? path.win32 : path.posix;
 }
 
 /** Directories on PATH, in order. */
-export function pathDirs(platform, env = {}) {
+export function pathDirs(platform: string, env: Env = {}): string[] {
   const raw = platform === 'win32' ? env.Path ?? env.PATH ?? env.path : env.PATH;
   if (!raw) return [];
   const sep = platform === 'win32' ? ';' : ':';
@@ -52,7 +55,7 @@ export function pathDirs(platform, env = {}) {
 }
 
 /** The standard install locations for `platform`, most likely first. */
-export function standardLocations(platform, env = {}, home = '') {
+export function standardLocations(platform: string, env: Env = {}, home = ''): string[] {
   const p = pathFor(platform);
   if (platform === 'darwin') {
     const list = ['/Applications/GaiaDesk.app/Contents/MacOS/gaiadesk-cli'];
@@ -61,8 +64,8 @@ export function standardLocations(platform, env = {}, home = '') {
     return list;
   }
   if (platform === 'win32') {
-    const list = [];
-    const roots = [env.ProgramFiles, env.ProgramW6432, env['ProgramFiles(x86)']].filter(Boolean);
+    const list: string[] = [];
+    const roots = [env.ProgramFiles, env.ProgramW6432, env['ProgramFiles(x86)']].filter((r): r is string => !!r);
     for (const r of [...new Set(roots)]) list.push(p.join(r, 'GaiaDesk', 'gaiadesk-cli.exe'));
     if (env.LOCALAPPDATA) {
       list.push(p.join(env.LOCALAPPDATA, 'GaiaDesk', 'gaiadesk-cli.exe'));
@@ -78,9 +81,9 @@ export function standardLocations(platform, env = {}, home = '') {
 }
 
 /** Every candidate path, in the order they are tried (after $GAIADESK_CLI). */
-export function candidates(platform, env = {}, home = '') {
+export function candidates(platform: string, env: Env = {}, home = ''): string[] {
   const p = pathFor(platform);
-  const out = [];
+  const out: string[] = [];
   for (const dir of pathDirs(platform, env)) {
     for (const name of binaryNames(platform, env)) out.push(p.join(dir, name));
   }
@@ -89,7 +92,7 @@ export function candidates(platform, env = {}, home = '') {
 }
 
 /** A file this process can execute (on Windows: a file that exists). */
-export function defaultIsRunnable(file, platform = process.platform) {
+export function defaultIsRunnable(file: string, platform: string = process.platform): boolean {
   try {
     const st = fs.statSync(file);
     if (!st.isFile()) return false;
@@ -102,7 +105,10 @@ export function defaultIsRunnable(file, platform = process.platform) {
 }
 
 export class CliNotFoundError extends Error {
-  constructor(message, tried) {
+  /** Every path that was tried, in order. */
+  readonly tried: string[];
+
+  constructor(message: string, tried: string[]) {
     super(message);
     this.name = 'CliNotFoundError';
     this.tried = tried;
@@ -113,12 +119,20 @@ export class CliNotFoundError extends Error {
  * Locate `gaiadesk-cli`. Returns its absolute path, or throws
  * CliNotFoundError whose message says what was tried and where to get it.
  */
+export interface LocateOptions {
+  platform?: string;
+  env?: Env;
+  home?: string;
+  /** Can this path be run? Default: an executable regular file (Windows: a file). */
+  isRunnable?: (file: string) => boolean;
+}
+
 export function locate({
   platform = process.platform,
   env = process.env,
   home = os.homedir(),
-  isRunnable = (f) => defaultIsRunnable(f, platform),
-} = {}) {
+  isRunnable = (f: string) => defaultIsRunnable(f, platform),
+}: LocateOptions = {}): string {
   const explicit = env[CLI_ENV];
   if (explicit) {
     if (isRunnable(explicit)) return explicit;
@@ -135,7 +149,7 @@ export function locate({
   throw new CliNotFoundError(notFoundMessage(platform, tried), tried);
 }
 
-export function notFoundMessage(platform, tried) {
+export function notFoundMessage(platform: string, tried: readonly string[]): string {
   const where = standardLocations(platform, {}, '~')[0];
   return [
     'gaiadesk-cli was not found.',

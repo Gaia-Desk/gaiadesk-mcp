@@ -5,15 +5,21 @@
   "license": "MIT",
   "type": "module",
   "bin": {
-    "gaiadesk-mcp": "bin/gaiadesk-mcp.js"
+    "gaiadesk-mcp": "dist/bin.js"
   },
   "exports": {
-    "./locate": "./src/locate.js",
-    "./bridge": "./src/bridge.js"
+    "./locate": {
+      "types": "./dist/locate.d.ts",
+      "import": "./dist/locate.js"
+    },
+    "./bridge": {
+      "types": "./dist/bridge.d.ts",
+      "import": "./dist/bridge.js"
+    },
+    "./package.json": "./package.json"
   },
   "files": [
-    "bin/",
-    "src/",
+    "dist/",
     "README.md",
     "LICENSE",
     "CHANGELOG.md"
@@ -22,7 +28,15 @@
     "node": ">=18"
   },
   "scripts": {
-    "test": "node --test"
+    "build": "tsc -p tsconfig.json",
+    "build:test": "tsc -p tsconfig.test.json",
+    "clean": "node -e \"for (const d of ['dist', 'dist-test']) require('node:fs').rmSync(d, { recursive: true, force: true })\"",
+    "test": "npm run clean && npm run build && npm run build:test && node --test dist-test/locate.test.js dist-test/bridge.test.js dist-test/launcher.test.js dist-test/package.test.js",
+    "prepack": "npm run clean && npm run build"
+  },
+  "devDependencies": {
+    "@types/node": "^18.19.0",
+    "typescript": "^5.6.0"
   },
   "keywords": [
     "gaiadesk",
@@ -31,7 +45,14 @@
     "remote-desktop",
     "ai-agents"
   ],
-  "homepage": "https://gaiadesk.net/docs/cli-for-agents",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/Gaia-Desk/gaiadesk-mcp.git"
+  },
+  "homepage": "https://github.com/Gaia-Desk/gaiadesk-mcp#readme",
+  "bugs": {
+    "url": "https://github.com/Gaia-Desk/gaiadesk-mcp/issues"
+  },
   "publishConfig": {
     "access": "public"
   }

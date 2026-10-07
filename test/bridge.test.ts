@@ -1,9 +1,9 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 
-import { createBridge, splitLines, SERVER_PROTOCOL, META_PROTOCOL_VERSION, META_CLIENT_CAPABILITIES } from '../src/bridge.js';
+import { createBridge, splitLines, SERVER_PROTOCOL, META_PROTOCOL_VERSION, META_CLIENT_CAPABILITIES } from '../dist/bridge.js';
 
-const line = (o) => JSON.stringify(o);
+const line = (o: unknown) => JSON.stringify(o);
 
 test('a 2026-07-28 client passes through byte for byte', () => {
   const b = createBridge();

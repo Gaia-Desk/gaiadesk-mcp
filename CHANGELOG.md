@@ -14,3 +14,9 @@
 - README: every tool and its arguments, credentials and scoped agent tokens,
   configuration for Claude Desktop, Claude Code, Cursor, VS Code, Windsurf and
   generic stdio clients, and the safety model.
+- Written in TypeScript (`src/*.ts`, compiled to `dist/`; the `gaiadesk-mcp`
+  bin is `dist/bin.js`); tests in TypeScript on `node:test`. No runtime
+  dependencies.
+- `docs/mcp-vs-sdk.md`: when to use this server and when to use the
+  [TypeScript](https://github.com/Gaia-Desk/gaiadesk-typescript) or
+  [Python](https://github.com/Gaia-Desk/gaiadesk-python) SDK.

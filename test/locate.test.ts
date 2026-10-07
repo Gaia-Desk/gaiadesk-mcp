@@ -9,9 +9,9 @@ import {
   standardLocations,
   CliNotFoundError,
   DOWNLOAD_URL,
-} from '../src/locate.js';
+} from '../dist/locate.js';
 
-const only = (...paths) => (f) => paths.includes(f);
+const only = (...paths: string[]) => (f: string) => paths.includes(f);
 
 test('macOS: PATH first, then the app bundle', () => {
   const env = { PATH: '/opt/bin:/usr/bin' };
@@ -75,14 +75,14 @@ test('$GAIADESK_CLI wins, and a bad one is an error, never a silent fallback', (
   assert.equal(locate({ platform: 'linux', env, home: '/h', isRunnable: only('/custom/gaiadesk-cli', '/usr/bin/gaiadesk-cli') }), '/custom/gaiadesk-cli');
   assert.throws(
     () => locate({ platform: 'linux', env, home: '/h', isRunnable: only('/usr/bin/gaiadesk-cli') }),
-    (e) => e instanceof CliNotFoundError && /GAIADESK_CLI/.test(e.message) && e.message.includes(DOWNLOAD_URL),
+    (e: unknown) => e instanceof CliNotFoundError && /GAIADESK_CLI/.test(e.message) && e.message.includes(DOWNLOAD_URL),
   );
 });
 
 test('not found: the error names the download page and what was tried', () => {
   assert.throws(
     () => locate({ platform: 'darwin', env: { PATH: '/usr/bin' }, home: '/Users/me', isRunnable: () => false }),
-    (e) => {
+    (e: unknown) => {
       assert.ok(e instanceof CliNotFoundError);
       assert.ok(e.message.includes('https://gaiadesk.net/download'));
       assert.ok(e.message.includes('/Applications/GaiaDesk.app/Contents/MacOS/gaiadesk-cli'));

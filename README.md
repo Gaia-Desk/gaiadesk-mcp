@@ -9,9 +9,17 @@ The MCP server is part of GaiaDesk itself: it is `gaiadesk-cli mcp`, and it
 ships with the GaiaDesk app. This repository holds:
 
 - this guide: every tool, sign-in and scoped tokens, client configs, safety;
-- `@gaiadesk/mcp`, a small npm launcher (`gaiadesk-mcp`) that finds
-  `gaiadesk-cli` on your machine and runs `gaiadesk-cli mcp` on stdio, so a
-  client config can say `npx -y @gaiadesk/mcp` instead of a per-OS path.
+- `@gaiadesk/mcp`, a small npm launcher (`gaiadesk-mcp`, written in
+  TypeScript, no runtime dependencies) that finds `gaiadesk-cli` on your
+  machine and runs `gaiadesk-cli mcp` on stdio, so a client config can say
+  `npx -y @gaiadesk/mcp` instead of a per-OS path;
+- [MCP or SDK?](docs/mcp-vs-sdk.md): when to give a model this server and
+  when to drive desks from your own code with an SDK.
+
+Writing a program rather than configuring an assistant? Use an SDK:
+[TypeScript](https://github.com/Gaia-Desk/gaiadesk-typescript) (`@gaiadesk/sdk`)
+or [Python](https://github.com/Gaia-Desk/gaiadesk-python) (`gaiadesk`). Both
+can also start this MCP server for the screen tools.
 
 GaiaDesk is closed-source. This repository contains no GaiaDesk code; it only
 starts the `gaiadesk-cli` you installed. MIT-licensed.
@@ -27,6 +35,8 @@ starts the `gaiadesk-cli` you installed. MIT-licensed.
 - [Safety](#safety)
 - [Protocol version and the launcher's bridge](#protocol-version-and-the-launchers-bridge)
 - [Troubleshooting](#troubleshooting)
+- [MCP or SDK?](docs/mcp-vs-sdk.md)
+- [Development](#development)
 
 ---
 
@@ -381,6 +391,23 @@ them; that is up to the client.
 | `-32602 … _meta … is required` | A legacy client talking to `gaiadesk-cli mcp` directly. Use the launcher. |
 | Screen session closes at once | `--audit-dir` is missing or not writable. |
 | Token file refused | Other users can read it: `chmod 600`. |
+
+## Development
+
+The launcher is TypeScript in [`src/`](src) (`locate.ts`: finding
+`gaiadesk-cli`; `bridge.ts`: the legacy-handshake bridge, pure; `bin.ts`:
+the stream wiring), compiled to `dist/`, which is what npm publishes.
+
+```sh
+npm ci
+npm test       # build src/ to dist/, build test/ to dist-test/, run node:test against dist/
+```
+
+The end-to-end tests run the built `dist/bin.js` against a fake
+`gaiadesk-cli` ([`test/fixtures/fake-gaiadesk-cli.ts`](test/fixtures/fake-gaiadesk-cli.ts));
+they need a POSIX shell and are skipped on Windows, where the locator and
+bridge tests still run. CI runs on Linux, macOS and Windows with Node 18,
+20 and 22. The only dev dependencies are `typescript` and `@types/node`.
 
 ## License
 

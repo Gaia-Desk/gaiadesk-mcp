@@ -1,27 +1,47 @@
-// End to end: the real bin script, with $GAIADESK_CLI pointing at a fake
-// `gaiadesk-cli` (a Node script, so POSIX only).
+// End to end: the built launcher (dist/bin.js), with $GAIADESK_CLI pointing
+// at a fake `gaiadesk-cli` (an executable shell script running the compiled
+// fixture, so POSIX only; the missing-CLI test runs everywhere).
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { spawn } from 'node:child_process';
+import { chmodSync, mkdtempSync, writeFileSync } from 'node:fs';
+import { tmpdir } from 'node:os';
+import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
-const BIN = fileURLToPath(new URL('../bin/gaiadesk-mcp.js', import.meta.url));
-const FAKE = fileURLToPath(new URL('./fixtures/fake-gaiadesk-cli', import.meta.url));
+const BIN = fileURLToPath(new URL('../dist/bin.js', import.meta.url));
+const FIXTURE = fileURLToPath(new URL('./fixtures/fake-gaiadesk-cli.js', import.meta.url));
 const posix = process.platform !== 'win32';
 
-function run(args, input, env = {}) {
+/** An executable `gaiadesk-cli` stand-in: exec node on the compiled fixture. */
+function makeFake(): string {
+  const file = join(mkdtempSync(join(tmpdir(), 'gaiadesk-mcp-')), 'gaiadesk-cli');
+  const q = (s: string) => `'${s.replace(/'/g, `'\\''`)}'`;
+  writeFileSync(file, `#!/bin/sh\nexec ${q(process.execPath)} ${q(FIXTURE)} "$@"\n`);
+  chmodSync(file, 0o755);
+  return file;
+}
+const FAKE = posix ? makeFake() : '';
+
+interface Ran {
+  code: number | null;
+  out: string;
+  err: string;
+}
+
+function run(args: string[], input: string, env: Record<string, string> = {}): Promise<Ran> {
   return new Promise((resolve) => {
     const child = spawn(process.execPath, [BIN, ...args], { env: { ...process.env, GAIADESK_CLI: FAKE, ...env } });
     let out = '';
     let err = '';
-    child.stdout.on('data', (d) => (out += d));
-    child.stderr.on('data', (d) => (err += d));
+    child.stdout.on('data', (d: Buffer) => (out += d));
+    child.stderr.on('data', (d: Buffer) => (err += d));
     child.on('close', (code) => resolve({ code, out, err }));
     child.stdin.end(input);
   });
 }
 
-const lines = (s) => s.split('\n').filter(Boolean).map((l) => JSON.parse(l));
+const lines = (s: string) => s.split('\n').filter(Boolean).map((l) => JSON.parse(l));
 
 test('--which prints the CLI it would run', { skip: !posix }, async () => {
   const r = await run(['--which'], '');
