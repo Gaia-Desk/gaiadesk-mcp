@@ -1,0 +1,38 @@
+{
+  "name": "@gaiadesk/mcp",
+  "version": "0.1.0",
+  "description": "Launcher for the GaiaDesk MCP server: finds gaiadesk-cli and runs `gaiadesk-cli mcp` over stdio.",
+  "license": "MIT",
+  "type": "module",
+  "bin": {
+    "gaiadesk-mcp": "bin/gaiadesk-mcp.js"
+  },
+  "exports": {
+    "./locate": "./src/locate.js",
+    "./bridge": "./src/bridge.js"
+  },
+  "files": [
+    "bin/",
+    "src/",
+    "README.md",
+    "LICENSE",
+    "CHANGELOG.md"
+  ],
+  "engines": {
+    "node": ">=18"
+  },
+  "scripts": {
+    "test": "node --test"
+  },
+  "keywords": [
+    "gaiadesk",
+    "mcp",
+    "model-context-protocol",
+    "remote-desktop",
+    "ai-agents"
+  ],
+  "homepage": "https://gaiadesk.net/docs/cli-for-agents",
+  "publishConfig": {
+    "access": "public"
+  }
+}
