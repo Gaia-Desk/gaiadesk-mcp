@@ -5,6 +5,7 @@ import {
   binaryNames,
   candidates,
   locate,
+  npmCliBinary,
   pathDirs,
   standardLocations,
   CliNotFoundError,
@@ -89,6 +90,40 @@ test('not found: the error names the download page and what was tried', () => {
       assert.ok(e.tried.includes('/usr/bin/gaiadesk-cli'));
       return true;
     },
+  );
+});
+
+test('@gaiadesk/cli\'s binary comes after $GAIADESK_CLI and before PATH', () => {
+  const npm = '/x/node_modules/@gaiadesk/cli-linux-x64-gnu/bin/gaiadesk-cli';
+  const env = { PATH: '/usr/bin' };
+  // Before PATH.
+  assert.equal(locate({ platform: 'linux', env, home: '/h', isRunnable: only(npm, '/usr/bin/gaiadesk-cli'), npmCli: () => npm }), npm);
+  // After an explicit $GAIADESK_CLI.
+  assert.equal(
+    locate({ platform: 'linux', env: { ...env, GAIADESK_CLI: '/c/gaiadesk-cli' }, home: '/h', isRunnable: only(npm, '/c/gaiadesk-cli'), npmCli: () => npm }),
+    '/c/gaiadesk-cli',
+  );
+  // Not runnable, or none: the search goes on.
+  assert.equal(locate({ platform: 'linux', env, home: '/h', isRunnable: only('/usr/bin/gaiadesk-cli'), npmCli: () => npm }), '/usr/bin/gaiadesk-cli');
+  assert.equal(locate({ platform: 'linux', env, home: '/h', isRunnable: only('/usr/bin/gaiadesk-cli'), npmCli: () => null }), '/usr/bin/gaiadesk-cli');
+});
+
+test('npmCliBinary: the package\'s tryBinaryPath, null for anything wrong', () => {
+  assert.equal(npmCliBinary(() => ({ tryBinaryPath: () => '/n/bin/gaiadesk-cli' })), '/n/bin/gaiadesk-cli');
+  assert.equal(npmCliBinary(() => ({ tryBinaryPath: () => null })), null);
+  assert.equal(npmCliBinary(() => ({})), null);
+  assert.equal(
+    npmCliBinary(() => {
+      throw new Error('Cannot find module');
+    }),
+    null,
+  );
+});
+
+test('not found: the message offers the npm package', () => {
+  assert.throws(
+    () => locate({ platform: 'linux', env: {}, home: '/h', isRunnable: () => false, npmCli: () => null }),
+    (e: unknown) => e instanceof CliNotFoundError && e.message.includes('npm install -g @gaiadesk/cli'),
   );
 });
 

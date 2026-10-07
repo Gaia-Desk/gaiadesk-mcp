@@ -2,6 +2,10 @@
 
 ## Unreleased
 
+- `@gaiadesk/cli` (the prebuilt `gaiadesk-cli` for macOS, Linux and Windows)
+  is an optional dependency, and the launcher tries its binary right after
+  `$GAIADESK_CLI`, before `PATH`: `npx -y @gaiadesk/mcp` works with nothing
+  else installed. The not-found message says how to install it.
 - The launcher runs `gaiadesk-cli --version --json` first. A CLI that speaks
   the standard MCP lifecycle itself (0.10.324 and newer: the `mcp_lifecycle`
   feature, or a protocol revision besides 2026-07-28 in

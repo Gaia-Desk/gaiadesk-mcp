@@ -10,10 +10,11 @@ ships with the GaiaDesk app. This repository holds:
 
 - this guide: every tool, sign-in and scoped tokens, client configs, safety;
 - `@gaiadesk/mcp`, a small npm launcher (`gaiadesk-mcp`, written in
-  TypeScript, no runtime dependencies) that finds `gaiadesk-cli` on your
-  machine and runs `gaiadesk-cli mcp` on stdio (bridging an older CLI to
+  TypeScript) that runs `gaiadesk-cli mcp` on stdio (bridging an older CLI to
   clients that open with `initialize`), so a client config can say
-  `npx -y @gaiadesk/mcp` instead of a per-OS path;
+  `npx -y @gaiadesk/mcp` instead of a per-OS path. It brings `gaiadesk-cli`
+  with it (the optional dependency `@gaiadesk/cli`), so that works with
+  nothing else installed on the machine;
 - [MCP or SDK?](docs/mcp-vs-sdk.md): when to give a model this server and
   when to drive desks from your own code with an SDK.
 
@@ -43,8 +44,13 @@ starts the `gaiadesk-cli` you installed. MIT-licensed.
 
 ## Install
 
-1. **Install GaiaDesk** on the machine where your MCP client runs:
-   <https://gaiadesk.net/download>. `gaiadesk-cli` is installed with it:
+1. **Get `gaiadesk-cli`** on the machine where your MCP client runs. The
+   launcher (step 3) installs it for you: `npx -y @gaiadesk/mcp` pulls in
+   [`@gaiadesk/cli`](https://www.npmjs.com/package/@gaiadesk/cli), the
+   prebuilt CLI for macOS, Linux (glibc) and Windows, and uses it — no
+   GaiaDesk app needed there. Without npm, install it with the scripts or
+   Homebrew from [Gaia-Desk/gaiadesk-cli](https://github.com/Gaia-Desk/gaiadesk-cli),
+   or install GaiaDesk (<https://gaiadesk.net/download>), which includes it:
 
    | OS | Where `gaiadesk-cli` is |
    |---|---|
@@ -63,9 +69,11 @@ starts the `gaiadesk-cli` you installed. MIT-licensed.
    ```
 
    The launcher looks, in order, at `$GAIADESK_CLI` (an explicit path; if it
-   is set but wrong, that is an error, never a silent fallback), every
-   directory on `PATH`, then the standard locations above. If it finds
-   nothing it exits 127 and says where to download GaiaDesk.
+   is set but wrong, that is an error, never a silent fallback), the binary
+   `@gaiadesk/cli` installed for this platform, every directory on `PATH`,
+   then the standard locations above. If it finds nothing (for example after
+   `npm install --omit=optional`, or on Alpine/musl) it exits 127 and says how
+   to get `gaiadesk-cli`.
 
    You can skip the launcher and point your client straight at the absolute
    path of `gaiadesk-cli` with `args: ["mcp"]`. MCP clients do not search your
@@ -414,7 +422,7 @@ server.
 
 | Symptom | Cause |
 |---|---|
-| `gaiadesk-cli was not found` (exit 127) | Install GaiaDesk (<https://gaiadesk.net/download>) or set `GAIADESK_CLI`. |
+| `gaiadesk-cli was not found` (exit 127) | `npm install -g @gaiadesk/cli` (optional dependencies were skipped, or no build for this platform), install GaiaDesk (<https://gaiadesk.net/download>), or set `GAIADESK_CLI`. |
 | No tools listed; stderr says `no agent token in $GAIADESK_AGENT_TOKEN` | No credential in the server's environment. Set `GAIADESK_TOKEN_FILE` (desk tools) or `GAIADESK_AGENT_TOKEN` (screen tools). The stderr line appears whenever `GAIADESK_AGENT_TOKEN` is unset, even if desk tools work. |
 | A tool returns "…the `cp` scope…" | The token lacks that scope. Mint one with it. |
 | `-32602 … _meta … is required` | A client that opens with `initialize`, talking directly to a `gaiadesk-cli mcp` from before 0.10.324. Update GaiaDesk, or use the launcher. |

@@ -1,10 +1,13 @@
-// Finds the `gaiadesk-cli` binary that ships with the GaiaDesk app.
+// Finds the `gaiadesk-cli` binary to run.
 //
 // Order (first hit wins):
 //   1. $GAIADESK_CLI — an explicit path. If it is set but not runnable, that
 //      is an error: we never silently fall through to a different binary.
-//   2. Every directory on $PATH (Windows: honouring $PATHEXT).
-//   3. The standard install locations for this OS. These come from GaiaDesk's
+//   2. The binary of the npm package @gaiadesk/cli, an optional dependency of
+//      this one, so `npx @gaiadesk/mcp` works with nothing else installed.
+//      Asked only for this process's own platform.
+//   3. Every directory on $PATH (Windows: honouring $PATHEXT).
+//   4. The standard install locations for this OS. These come from GaiaDesk's
 //      public docs ("Where gaiadesk-cli is", https://gaiadesk.net/docs/agent-access):
 //        macOS:   /Applications/GaiaDesk.app/Contents/MacOS/gaiadesk-cli
 //                 (and /usr/local/bin/gaiadesk-cli once "Add the gaiadesk
@@ -18,11 +21,32 @@
 // versa.
 
 import fs from 'node:fs';
+import { createRequire } from 'node:module';
 import os from 'node:os';
 import path from 'node:path';
 
 export const DOWNLOAD_URL = 'https://gaiadesk.net/download';
 export const CLI_ENV = 'GAIADESK_CLI';
+export const NPM_CLI_PACKAGE = '@gaiadesk/cli';
+
+/** What `require('@gaiadesk/cli')` gives (CommonJS, so it loads synchronously). */
+interface CliPackage {
+  tryBinaryPath?: () => string | null;
+}
+
+/**
+ * The gaiadesk-cli binary @gaiadesk/cli installed for this platform, or null
+ * (the package is absent, older, or has no binary for this platform).
+ */
+export function npmCliBinary(req: (id: string) => unknown = createRequire(import.meta.url)): string | null {
+  try {
+    const m = req(NPM_CLI_PACKAGE) as CliPackage;
+    const p = typeof m?.tryBinaryPath === 'function' ? m.tryBinaryPath() : null;
+    return typeof p === 'string' && p ? p : null;
+  } catch {
+    return null;
+  }
+}
 
 /** An environment: `process.env`, or a plain object in tests. */
 export type Env = Record<string, string | undefined>;
@@ -125,6 +149,8 @@ export interface LocateOptions {
   home?: string;
   /** Can this path be run? Default: an executable regular file (Windows: a file). */
   isRunnable?: (file: string) => boolean;
+  /** @gaiadesk/cli's binary, or null. Default: `npmCliBinary()`, for this process's own platform only. */
+  npmCli?: () => string | null;
 }
 
 export function locate({
@@ -132,6 +158,7 @@ export function locate({
   env = process.env,
   home = os.homedir(),
   isRunnable = (f: string) => defaultIsRunnable(f, platform),
+  npmCli = () => (platform === process.platform ? npmCliBinary() : null),
 }: LocateOptions = {}): string {
   const explicit = env[CLI_ENV];
   if (explicit) {
@@ -142,6 +169,8 @@ export function locate({
       [explicit],
     );
   }
+  const fromNpm = npmCli();
+  if (fromNpm && isRunnable(fromNpm)) return fromNpm;
   const tried = candidates(platform, env, home);
   for (const c of tried) {
     if (isRunnable(c)) return c;
@@ -154,7 +183,9 @@ export function notFoundMessage(platform: string, tried: readonly string[]): str
   return [
     'gaiadesk-cli was not found.',
     '',
-    `It ships with the GaiaDesk app. Install GaiaDesk from ${DOWNLOAD_URL}`,
+    `npm normally installs it with this package (${NPM_CLI_PACKAGE}, an optional dependency);`,
+    'it is missing with --omit=optional or on a platform without a build. Install it with',
+    `\`npm install -g ${NPM_CLI_PACKAGE}\`, or install the GaiaDesk app from ${DOWNLOAD_URL}`,
     `(typical location on this OS: ${where}),`,
     `or set ${CLI_ENV} to the full path of gaiadesk-cli.`,
     '',

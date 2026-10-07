@@ -31,6 +31,9 @@
   "engines": {
     "node": ">=18"
   },
+  "optionalDependencies": {
+    "@gaiadesk/cli": "^0.10.324"
+  },
   "scripts": {
     "build": "tsc -p tsconfig.json",
     "build:test": "tsc -p tsconfig.test.json",
