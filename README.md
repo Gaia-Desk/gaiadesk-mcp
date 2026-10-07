@@ -10,8 +10,7 @@ ships with the GaiaDesk app. This repository holds:
 
 - this guide: every tool, sign-in and scoped tokens, client configs, safety;
 - `@gaiadesk/mcp`, a small npm launcher (`gaiadesk-mcp`, written in
-  TypeScript) that runs `gaiadesk-cli mcp` on stdio (bridging an older CLI to
-  clients that open with `initialize`), so a client config can say
+  TypeScript) that runs `gaiadesk-cli mcp` on stdio, so a client config can say
   `npx -y @gaiadesk/mcp` instead of a per-OS path. It brings `gaiadesk-cli`
   with it (the optional dependency `@gaiadesk/cli`), so that works with
   nothing else installed on the machine;
@@ -35,7 +34,7 @@ starts the `gaiadesk-cli` you installed. MIT-licensed.
 - [Client configuration](#client-configuration)
 - [The tools](#the-tools)
 - [Safety](#safety)
-- [Protocol version and the launcher's bridge](#protocol-version-and-the-launchers-bridge)
+- [Protocol version](#protocol-version)
 - [Troubleshooting](#troubleshooting)
 - [MCP or SDK?](docs/mcp-vs-sdk.md)
 - [Development](#development)
@@ -281,15 +280,12 @@ GAIADESK_AGENT_TOKEN=gdagt_… gaiadesk-cli mcp --http --audit-dir ~/gaiadesk-ag
 
 The launcher passes every flag through unchanged. Its own options:
 `gaiadesk-mcp --which` prints the `gaiadesk-cli` it would run;
-`GAIADESK_CLI=<path>` picks the binary; `GAIADESK_MCP_BRIDGE=off` / `on`
-turns the bridge for older CLIs described
-[below](#protocol-version-and-the-launchers-bridge) off or always on.
+`GAIADESK_CLI=<path>` picks the binary.
 
 ## The tools
 
 Names, arguments and limits are those `gaiadesk-cli mcp` advertises in
-`tools/list` (0.10.324 and newer; an older CLI spells every name with a dot,
-`gaiadesk.exec`: see [Tool names on older CLIs](#tool-names-on-older-clis)). Every schema has `additionalProperties: false`: an invented
+`tools/list`. Every schema has `additionalProperties: false`: an invented
 argument is an error, not silently ignored.
 
 ### Desk tools (no screen involved)
@@ -372,9 +368,9 @@ the Windows key on Windows.
 Details: <https://gaiadesk.net/docs/cli-for-agents> and
 <https://gaiadesk.net/docs/agent-access>.
 
-## Protocol version and the launcher's bridge
+## Protocol version
 
-`gaiadesk-cli mcp` **0.10.324 and newer** speaks both:
+`gaiadesk-cli mcp` speaks both:
 
 - the standard MCP lifecycle (`initialize`, then `notifications/initialized`,
   then plain requests) at revisions 2025-11-25, 2025-06-18, 2025-03-26 and
@@ -384,39 +380,16 @@ Details: <https://gaiadesk.net/docs/cli-for-agents> and
   `params._meta["io.modelcontextprotocol/clientCapabilities"]`).
 
 `gaiadesk-cli --version --json` lists the revisions it speaks
-(`mcp_protocol_versions`) and the `mcp_lifecycle` feature.
+(`mcp_protocol_versions`).
 
-**Older `gaiadesk-cli` (before 0.10.324)** speak only 2026-07-28: a client
-that opens with `initialize` gets JSON-RPC error `-32602` from them directly.
+Before it starts the server, the launcher runs `gaiadesk-cli --version --json`.
+When that has `mcp_protocol_versions`, stdio is passed straight through, every
+byte, both ways. When it does not (the CLI prints its version as text, or fails
+on `--json`), the CLI is too old: the launcher exits 1 and says to update
+gaiadesk-cli.
 
-The launcher handles both. Before it starts the server it runs
-`gaiadesk-cli --version --json`:
-
-- **A CLI that speaks the standard lifecycle** (the output is a version
-  object listing `mcp_lifecycle`, or a protocol revision besides 2026-07-28):
-  stdio is passed straight through, every byte, both ways. No bridge.
-- **An older CLI** (it prints its version as text, or fails on `--json`): the
-  launcher bridges. If the **first** message from the client is
-  `initialize`, it answers `initialize` and `ping` itself, drops client
-  notifications, and adds the two `_meta` fields to every other request.
-  Otherwise it passes every byte through untouched. Server output is never
-  modified.
-
-`GAIADESK_MCP_BRIDGE=off` skips the check and never bridges (pure stdio
-passthrough); `GAIADESK_MCP_BRIDGE=on` skips the check and always bridges.
-
-### Tool names on older CLIs
-
-The tool names above (`gaiadesk_exec`, `gaiadesk_screenshot`, …) are those of
-`gaiadesk-cli` 0.10.324 and newer; they match `[A-Za-z0-9_-]`, which every
-model provider accepts. Those CLIs still accept the old dotted spelling
-(`gaiadesk.exec`) in `tools/call`. An **older** CLI advertises and accepts only
-the dotted names (`gaiadesk.exec`, `gaiadesk.copy_files`,
-`gaiadesk.job_run`, …, `gaiadesk.open_session`, `gaiadesk.screenshot`, …).
-The bridge does not rename tools, so with an older CLI your client sees the
-dotted names, and a client whose model provider restricts function names to
-`[A-Za-z0-9_-]` may reject them: update GaiaDesk on the machine running the
-server.
+Tool names (`gaiadesk_exec`, `gaiadesk_screenshot`, …) match `[A-Za-z0-9_-]`,
+which every model provider accepts.
 
 ## Troubleshooting
 
@@ -425,8 +398,7 @@ server.
 | `gaiadesk-cli was not found` (exit 127) | `npm install -g @gaiadesk/cli` (optional dependencies were skipped, or no build for this platform), install GaiaDesk (<https://gaiadesk.net/download>), or set `GAIADESK_CLI`. |
 | No tools listed; stderr says `no agent token in $GAIADESK_AGENT_TOKEN` | No credential in the server's environment. Set `GAIADESK_TOKEN_FILE` (desk tools) or `GAIADESK_AGENT_TOKEN` (screen tools). The stderr line appears whenever `GAIADESK_AGENT_TOKEN` is unset, even if desk tools work. |
 | A tool returns "…the `cp` scope…" | The token lacks that scope. Mint one with it. |
-| `-32602 … _meta … is required` | A client that opens with `initialize`, talking directly to a `gaiadesk-cli mcp` from before 0.10.324. Update GaiaDesk, or use the launcher. |
-| A call to `gaiadesk_exec` (or any `gaiadesk_*` tool) is refused as an unknown tool | An older `gaiadesk-cli` (before 0.10.324) whose tools are dotted (`gaiadesk.exec`). Update GaiaDesk. |
+| `gaiadesk-mcp: … is too old to serve MCP … Update gaiadesk-cli` (exit 1) | The `gaiadesk-cli` found has no `mcp_protocol_versions` in `--version --json`. Update it (`npm install -g @gaiadesk/cli`, or <https://gaiadesk.net/download>). |
 | Screen session closes at once | `--audit-dir` is missing or not writable. |
 | Token file refused | Other users can read it: `chmod 600`. |
 
@@ -434,8 +406,7 @@ server.
 
 The launcher is TypeScript in [`src/`](src) (`locate.ts`: finding
 `gaiadesk-cli`; `detect.ts`: reading `gaiadesk-cli --version --json` to
-decide between passthrough and the bridge; `bridge.ts`: the legacy-handshake
-bridge for older CLIs, pure; `bin.ts`: the stream wiring), compiled to `dist/`, which is what npm publishes.
+refuse a CLI too old to serve MCP; `bin.ts`: the stdio passthrough), compiled to `dist/`, which is what npm publishes.
 
 ```sh
 npm ci
@@ -444,10 +415,10 @@ npm test       # build src/ to dist/, build test/ to dist-test/, run node:test a
 
 The end-to-end tests run the built `dist/bin.js` against a fake
 `gaiadesk-cli` ([`test/fixtures/fake-gaiadesk-cli.ts`](test/fixtures/fake-gaiadesk-cli.ts)),
-as a new CLI (`--version --json` answered) and as an older one (text, or an
+as a current CLI (`--version --json` answered) and as one too old (text, or an
 error);
 they need a POSIX shell and are skipped on Windows, where the locator and
-bridge tests still run. CI runs on Linux, macOS and Windows with Node 18,
+version-check tests still run. CI runs on Linux, macOS and Windows with Node 18,
 20 and 22. The only dev dependencies are `typescript` and `@types/node`.
 
 ## License

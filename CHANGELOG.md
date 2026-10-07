@@ -6,16 +6,13 @@
   is an optional dependency, and the launcher tries its binary right after
   `$GAIADESK_CLI`, before `PATH`: `npx -y @gaiadesk/mcp` works with nothing
   else installed. The not-found message says how to install it.
-- The launcher runs `gaiadesk-cli --version --json` first. A CLI that speaks
-  the standard MCP lifecycle itself (0.10.324 and newer: the `mcp_lifecycle`
-  feature, or a protocol revision besides 2026-07-28 in
-  `mcp_protocol_versions`) gets its stdio passed straight through, with no
-  bridge. An older CLI (its version as text, or an error) is bridged as
-  before. `GAIADESK_MCP_BRIDGE=on` forces the bridge; `off` still forces
-  passthrough. The check is exported as `@gaiadesk/mcp/detect`.
+- The launcher runs `gaiadesk-cli --version --json` first and passes stdio
+  straight through to `gaiadesk-cli mcp`, which speaks the standard MCP
+  lifecycle itself. A CLI with no `mcp_protocol_versions` there is too old:
+  the launcher exits 1 and says to update gaiadesk-cli. The check is exported
+  as `@gaiadesk/mcp/detect`.
 - README and docs: tool names are `gaiadesk_*` (`gaiadesk_exec`,
-  `gaiadesk_screenshot`, …), as `gaiadesk-cli` 0.10.324 advertises them; the
-  dotted names of older CLIs are noted.
+  `gaiadesk_screenshot`, …).
 
 ## 0.1.0 (unreleased)
 
@@ -25,9 +22,6 @@
     link when it is missing.
   - Runs `gaiadesk-cli mcp <args>` on stdio, forwarding signals and the exit
     code.
-  - Bridges clients that open with the legacy `initialize` handshake to the
-    stateless MCP 2026-07-28 revision `gaiadesk-cli mcp` speaks
-    (`GAIADESK_MCP_BRIDGE=off` disables it).
 - README: every tool and its arguments, credentials and scoped agent tokens,
   configuration for Claude Desktop, Claude Code, Cursor, VS Code, Windsurf and
   generic stdio clients, and the safety model.

@@ -31,8 +31,6 @@ test('exports: every entry exists, with its types', async () => {
   }
   const locate = await import('@gaiadesk/mcp/locate');
   assert.equal(locate.DOWNLOAD_URL, 'https://gaiadesk.net/download');
-  const bridge = await import('@gaiadesk/mcp/bridge');
-  assert.equal(bridge.SERVER_PROTOCOL, '2026-07-28');
   const detect = await import('@gaiadesk/mcp/detect');
-  assert.equal(typeof detect.launchMode, 'function');
+  assert.equal(typeof detect.probeCli, 'function');
 });

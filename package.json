@@ -12,10 +12,6 @@
       "types": "./dist/locate.d.ts",
       "import": "./dist/locate.js"
     },
-    "./bridge": {
-      "types": "./dist/bridge.d.ts",
-      "import": "./dist/bridge.js"
-    },
     "./detect": {
       "types": "./dist/detect.d.ts",
       "import": "./dist/detect.js"
@@ -38,7 +34,7 @@
     "build": "tsc -p tsconfig.json",
     "build:test": "tsc -p tsconfig.test.json",
     "clean": "node -e \"for (const d of ['dist', 'dist-test']) require('node:fs').rmSync(d, { recursive: true, force: true })\"",
-    "test": "npm run clean && npm run build && npm run build:test && node --test dist-test/locate.test.js dist-test/bridge.test.js dist-test/detect.test.js dist-test/launcher.test.js dist-test/package.test.js",
+    "test": "npm run clean && npm run build && npm run build:test && node --test dist-test/locate.test.js dist-test/detect.test.js dist-test/launcher.test.js dist-test/package.test.js",
     "prepack": "npm run clean && npm run build"
   },
   "devDependencies": {

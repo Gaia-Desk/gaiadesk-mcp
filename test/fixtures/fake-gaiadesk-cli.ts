@@ -3,10 +3,9 @@
 // Exits with $FAKE_EXIT (default 0) when stdin ends.
 //
 // `--version --json` is answered as $FAKE_VERSION says:
-//   json    a 0.10.324+ CLI: the version object, with `mcp_lifecycle`
-//   v2only  a version object whose MCP server speaks only 2026-07-28
-//   error   exits 2 with an unknown-flag error on stderr
-//   (unset) an older CLI: `gaiadesk-cli 0.10.300` as text
+//   (unset) the version object, with `mcp_protocol_versions`
+//   error   exits 2 with an unknown-flag error on stderr (a CLI too old)
+//   text    `gaiadesk-cli 0.10.300` as text (a CLI too old)
 // Every `--version` run is appended to $FAKE_LOG (when set), so tests can
 // see whether the launcher probed.
 //
@@ -24,19 +23,17 @@ if (argv[0] === '--version') {
     process.stderr.write("gaiadesk-cli: unknown flag '--json'\n");
     process.exit(2);
   }
-  if (style === 'json' || style === 'v2only') {
-    const full = style === 'json';
+  if (style === 'text') {
+    process.stdout.write('gaiadesk-cli 0.10.300\n');
+  } else {
     process.stdout.write(
       JSON.stringify({
         name: 'gaiadesk-cli',
         version: '0.10.324',
-        features: full ? ['json_error_envelope', 'exec_json_stream', 'mcp_lifecycle', 'mcp_underscore_tool_names'] : ['json_error_envelope'],
-        json_shapes: ['v1', 'v2'],
-        mcp_protocol_versions: full ? ['2026-07-28', '2025-11-25', '2025-06-18', '2025-03-26', '2024-11-05'] : ['2026-07-28'],
+        features: ['json_error_envelope', 'exec_json_stream', 'mcp_lifecycle', 'mcp_underscore_tool_names'],
+        mcp_protocol_versions: ['2026-07-28', '2025-11-25', '2025-06-18', '2025-03-26', '2024-11-05'],
       }) + '\n',
     );
-  } else {
-    process.stdout.write('gaiadesk-cli 0.10.300\n');
   }
   process.exit(0);
 }
