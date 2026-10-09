@@ -1,35 +1,25 @@
 # Changelog
 
-## Unreleased
+## 0.1.0 (2026-10-08)
 
-- README: `gaiadesk_job_wait` (`desk_id`, `name`, `timeout_seconds`; returns
-  `{job, timed_out}`); `env` (object of strings) on `gaiadesk_exec` and
-  `gaiadesk_job_run`, `shell` (and `cwd`) on `gaiadesk_job_run`; `bash` and
-  `zsh` shells; `blocked_by_os_policy` (Windows Smart App Control / WDAC) in
-  exec errors and jobs.
-- `@gaiadesk/cli` (the prebuilt `gaiadesk-cli` for macOS, Linux and Windows)
-  is an optional dependency, and the launcher tries its binary right after
-  `$GAIADESK_CLI`, before `PATH`: `npx -y @gaiadesk/mcp` works with nothing
-  else installed. The not-found message says how to install it.
-- The launcher runs `gaiadesk-cli --version --json` first and passes stdio
-  straight through to `gaiadesk-cli mcp`, which speaks the standard MCP
-  lifecycle itself. A CLI with no `mcp_protocol_versions` there is too old:
-  the launcher exits 1 and says to update gaiadesk-cli. The check is exported
-  as `@gaiadesk/mcp/detect`.
-- README and docs: tool names are `gaiadesk_*` (`gaiadesk_exec`,
-  `gaiadesk_screenshot`, …).
+First published version of `@gaiadesk/mcp`: the `gaiadesk-mcp` launcher.
 
-## 0.1.0 (unreleased)
-
-- First version of `@gaiadesk/mcp`: the `gaiadesk-mcp` launcher.
-  - Finds `gaiadesk-cli` via `$GAIADESK_CLI`, `PATH`, then the standard
-    install locations on macOS, Windows and Linux; exits 127 with the download
-    link when it is missing.
-  - Runs `gaiadesk-cli mcp <args>` on stdio, forwarding signals and the exit
-    code.
-- README: every tool and its arguments, credentials and scoped agent tokens,
-  configuration for Claude Desktop, Claude Code, Cursor, VS Code, Windsurf and
-  generic stdio clients, and the safety model.
+- Finds `gaiadesk-cli` via `$GAIADESK_CLI`, then the binary from
+  `@gaiadesk/cli` (the prebuilt `gaiadesk-cli` for macOS, Linux and Windows,
+  an optional dependency), then `PATH`, then the standard install locations on
+  macOS, Windows and Linux: `npx -y @gaiadesk/mcp` works with nothing else
+  installed. When it finds nothing it exits 127 and says how to install it.
+- Runs `gaiadesk-cli --version --json` first and passes stdio straight
+  through to `gaiadesk-cli mcp <args>`, which speaks the standard MCP
+  lifecycle itself, forwarding signals and the exit code. A CLI with no
+  `mcp_protocol_versions` there is too old: the launcher exits 1 and says to
+  update gaiadesk-cli. The check is exported as `@gaiadesk/mcp/detect`.
+- README: every tool and its arguments (tool names are `gaiadesk_*`:
+  `gaiadesk_exec`, `gaiadesk_screenshot`, `gaiadesk_job_wait`, …; `env` on
+  `gaiadesk_exec` and `gaiadesk_job_run`; `bash` and `zsh` shells;
+  `blocked_by_os_policy` in exec errors and jobs), credentials and scoped
+  agent tokens, configuration for Claude Desktop, Claude Code, Cursor,
+  VS Code, Windsurf and generic stdio clients, and the safety model.
 - Written in TypeScript (`src/*.ts`, compiled to `dist/`; the `gaiadesk-mcp`
   bin is `dist/bin.js`); tests in TypeScript on `node:test`. No runtime
   dependencies.

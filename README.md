@@ -1,9 +1,23 @@
 # GaiaDesk MCP server
 
-Let an AI assistant (Claude Desktop, Claude Code, Cursor, VS Code, Windsurf,
-or any MCP client) work on your GaiaDesk machines ("desks"): run commands
-and get their exit codes back, copy files, start and watch background jobs,
-forward ports, and, if you allow it, see and drive the screen.
+[![npm](https://img.shields.io/npm/v/@gaiadesk/mcp?label=npm%20%40gaiadesk%2Fmcp)](https://www.npmjs.com/package/@gaiadesk/mcp)
+[![npm downloads](https://img.shields.io/npm/dm/@gaiadesk/mcp)](https://www.npmjs.com/package/@gaiadesk/mcp)
+[![CI](https://github.com/Gaia-Desk/gaiadesk-mcp/actions/workflows/ci.yml/badge.svg)](https://github.com/Gaia-Desk/gaiadesk-mcp/actions/workflows/ci.yml)
+[![License: MIT](https://img.shields.io/github/license/Gaia-Desk/gaiadesk-mcp)](LICENSE)
+
+A **Model Context Protocol (MCP) server for remote computers**: let an AI
+assistant or agent (Claude Desktop, Claude Code, Cursor, VS Code, Windsurf,
+or any MCP client) work on your GaiaDesk machines ("desks") on macOS, Windows
+and Linux: run shell commands and get their exit codes back, copy files,
+start and watch background jobs, forward ports, and, if you allow it, take
+screenshots and drive the mouse and keyboard. Access is limited by scoped,
+expiring agent tokens that each desk enforces and audits.
+[GaiaDesk](https://gaiadesk.net) is remote desktop and remote support
+software, an alternative to TeamViewer, AnyDesk and RustDesk.
+
+```sh
+npx -y @gaiadesk/mcp
+```
 
 The MCP server is part of GaiaDesk itself: it is `gaiadesk-cli mcp`, and it
 ships with the GaiaDesk app. This repository holds:
@@ -38,6 +52,7 @@ starts the `gaiadesk-cli` you installed. MIT-licensed.
 - [Troubleshooting](#troubleshooting)
 - [MCP or SDK?](docs/mcp-vs-sdk.md)
 - [Development](#development)
+- [Links](#links)
 
 ---
 
@@ -57,6 +72,26 @@ starts the `gaiadesk-cli` you installed. MIT-licensed.
    | Windows | `gaiadesk-cli.exe` in GaiaDesk's install folder (usually `C:\Program Files\GaiaDesk\`); the installer adds it to `PATH` |
    | Linux (.deb, .rpm) | `/usr/bin/gaiadesk-cli` |
    | Linux (AppImage) | not on `PATH`; install the .deb/.rpm instead, or extract the AppImage (see GaiaDesk's docs) |
+
+   Other ways to get `gaiadesk-cli` on its own:
+
+   ```sh
+   npm install -g @gaiadesk/cli               # npm, every platform below
+   brew install gaia-desk/tap/gaiadesk        # Homebrew, macOS and Linux
+   ```
+
+   or download the binary from the
+   [latest GaiaDesk release](https://github.com/Gaia-Desk/gaiadesk-releases/releases/latest)
+   (each has a `.sha256` next to it):
+
+   | Platform | Download |
+   |---|---|
+   | macOS, Apple silicon | [`gaiadesk-cli-darwin-arm64.tar.gz`](https://github.com/Gaia-Desk/gaiadesk-releases/releases/latest/download/gaiadesk-cli-darwin-arm64.tar.gz) |
+   | macOS, Intel | [`gaiadesk-cli-darwin-x64.tar.gz`](https://github.com/Gaia-Desk/gaiadesk-releases/releases/latest/download/gaiadesk-cli-darwin-x64.tar.gz) |
+   | Linux x64 (glibc) | [`gaiadesk-cli-linux-x64.tar.gz`](https://github.com/Gaia-Desk/gaiadesk-releases/releases/latest/download/gaiadesk-cli-linux-x64.tar.gz) |
+   | Linux arm64 (glibc) | [`gaiadesk-cli-linux-arm64.tar.gz`](https://github.com/Gaia-Desk/gaiadesk-releases/releases/latest/download/gaiadesk-cli-linux-arm64.tar.gz) |
+   | Windows x64 | [`gaiadesk-cli-windows-x64.zip`](https://github.com/Gaia-Desk/gaiadesk-releases/releases/latest/download/gaiadesk-cli-windows-x64.zip) |
+   | Windows arm64 | [`gaiadesk-cli-windows-arm64.zip`](https://github.com/Gaia-Desk/gaiadesk-releases/releases/latest/download/gaiadesk-cli-windows-arm64.zip) |
 
 2. **Install GaiaDesk on each desk** you want the assistant to reach, and
    turn on **Settings → Agent access** there.
@@ -422,6 +457,25 @@ error);
 they need a POSIX shell and are skipped on Windows, where the locator and
 version-check tests still run. CI runs on Linux, macOS and Windows with Node 18,
 20 and 22. The only dev dependencies are `typescript` and `@types/node`.
+
+## Links
+
+- [@gaiadesk/mcp on npm](https://www.npmjs.com/package/@gaiadesk/mcp) ·
+  [@gaiadesk/cli on npm](https://www.npmjs.com/package/@gaiadesk/cli)
+- [The CLI for agents](https://gaiadesk.net/docs/cli-for-agents) ·
+  [Agent access](https://gaiadesk.net/docs/agent-access) ·
+  [Security](https://gaiadesk.net/docs/security) ·
+  [All docs](https://gaiadesk.net/docs)
+- [gaiadesk-cli](https://github.com/Gaia-Desk/gaiadesk-cli): the command line this server runs
+- SDKs: [TypeScript](https://github.com/Gaia-Desk/gaiadesk-typescript) ([`@gaiadesk/sdk`](https://www.npmjs.com/package/@gaiadesk/sdk)),
+  [Go](https://github.com/Gaia-Desk/gaiadesk-go) ([pkg.go.dev](https://pkg.go.dev/github.com/Gaia-Desk/gaiadesk-go)),
+  [Python](https://github.com/Gaia-Desk/gaiadesk-python),
+  [Java/Kotlin](https://github.com/Gaia-Desk/gaiadesk-java),
+  [.NET](https://github.com/Gaia-Desk/gaiadesk-dotnet),
+  [Ruby](https://github.com/Gaia-Desk/gaiadesk-ruby),
+  [PHP](https://github.com/Gaia-Desk/gaiadesk-php),
+  [Rust](https://github.com/Gaia-Desk/gaiadesk-rust)
+- Download GaiaDesk: [gaiadesk.net/download](https://gaiadesk.net/download)
 
 ## License
 
